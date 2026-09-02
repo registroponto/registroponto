@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administração de Pontos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+        .sidebar {
+            background-color: #333;
+            color: white;
+            width: 200px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar a:hover {
+            background-color: #444;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .sidebar .submenu {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            margin-left: 20px;
+        }
+        .sidebar .submenu a {
+            font-size: 16px;
+        }
+        .container {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        h1 {
+            text-align: center;
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        input, button, select, .editable {
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        input[type="checkbox"].editable-abono {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center; /* Centralizado para melhor leitura da tabela grande */
+        }
+        .admin-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .editable {
+            border: none;
+            background-color: transparent;
+            text-align: center;
+        }
+        .btn-pdf {
+            background-color: #333;
+            color: white;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .btn-pdf:hover {
+            background-color: #555;
+        }
+        .filters-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .filters-group .filter {
+            flex: 1;
+        }
+        /* Estilos para valores positivos e negativos no resumo */
+        .valor-positivo { color: green; font-weight: bold; }
+        .valor-negativo { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <a href="#" onclick="toggleSubmenu('cadastroSubmenu')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/user.png"/> Cadastrar
+        </a>
+        <div id="cadastroSubmenu" class="submenu">
+            <a href="#" onclick="showSection('novoCadastro')">Novo Cadastro</a>
+            <a href="#" onclick="showSection('consultarCadastro')">Consultar</a>
+        </div>
+        <a href="#" onclick="showSection('relatorios')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/report-card.png"/> Relatórios
+        </a>
+        <a href="#" onclick="showSection('dashboard')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/dashboard-layout.png"/> Dashboard
+        </a>
+        <a href="#" onclick="showSection('resumoMes')">
+            <img src="https://img.icons8.com/material-outlined/24/ffffff/calendar.png"/> Resumo do Mês
+        </a>
+    </div>
+    <div class="container">
+        <h1>Administração de Pontos</h1>
+        
+        <div id="novoCadastro" class="section">
+            <form id="cadastroForm">
+                <h2>Cadastro de Funcionário</h2>
+                <input type="text" id="nomeCompletoCadastro" placeholder="Nome Completo" required>
+                <input type="text" id="cpfCadastro" placeholder="CPF" required>
+                <input type="date" id="dataNascimentoCadastro" placeholder="Data de Nascimento" required>
+                <input type="email" id="emailCadastro" placeholder="Email" required>
+                <input type="text" id="whatsappCadastro" placeholder="WhatsApp" required>
+                <input type="date" id="dataAdmissaoCadastro" placeholder="Data de Admissão" required>
+                <input type="number" id="salarioCadastro" placeholder="Salário" required>
+                <input type="date" id="inicioFeriasCadastro" placeholder="Início das Férias">
+                <input type="date" id="fimFeriasCadastro" placeholder="Fim das Férias">
+                
+                <button type="button" onclick="cadastrarFuncionario()">Cadastrar Funcionário</button>
+            </form>
+        </div>
+
+        <div id="consultarCadastro" class="section">
+            <h2>Consultar Funcionário</h2>
+            <table id="tabelaFuncionarios">
+                <thead>
+                    <tr>
+                        <th>Nome Completo</th>
+                        <th>CPF</th>
+                        <th>Detalhes</th>
+                        <th>Editar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+            <div id="detalhesFuncionario"></div>
+        </div>
+
+        <div id="relatorios" class="section">
+            <h2>Relatório de Ponto Diário</h2>
+            <div class="filters-group">
+                <div class="filter">
+                    <label for="filterFuncionario">Selecionar Funcionário:</label>
+                    <select id="filterFuncionario" onchange="carregarRegistrosFuncionario()">
+                        <option value="">Selecione um funcionário</option>
+                    </select>
+                </div>
+                <div class="filter">
+                    <label for="filterMes">Selecionar Mês:</label>
+                    <select id="filterMes" onchange="carregarRegistrosFuncionario()">
+                        <option value="0">Janeiro</option>
+                        <option value="1">Fevereiro</option>
+                        <option value="2">Março</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Maio</option>
+                        <option value="5">Junho</option>
+                        <option value="6">Julho</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Setembro</option>
+                        <option value="9">Outubro</option>
+                        <option value="10">Novembro</option>
+                        <option value="11">Dezembro</option>
+                    </select>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Entrada</th>
+                        <th>Pausa</th>
+                        <th>Retorno</th>
+                        <th>Saída</th>
+                        <th>H. Trab.</th>
+                        <th>Saldo Diário</th>
+                        <th>Abonar/Feriado</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="registrosTabelaAdmin">
+                </tbody>
+            </table>
+            <div class="admin-buttons">
+                <button style="background-color: #d9534f; color: white;" onclick="limparDados()">⚠️ Limpar Todos os Dados</button>
+            </div>
+        </div>
+
+        <div id="dashboard" class="section">
+            <h2>Dashboard Hoje</h2>
+            <table id="dashboardTabela">
+                <thead>
+                    <tr>
+                        <th>Funcionário</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="resumoMes" class="section">
+            <h2>Resumo Mensal e Banco de Horas</h2>
+            
+            <div class="filters-group">
+                <div class="filter">
+                    <label for="filterResumoFuncionario">Selecionar Funcionário:</label>
+                    <select id="filterResumoFuncionario" onchange="mostrarResumo()">
+                        <option value="">Selecione um funcionário</option>
+                    </select>
+                </div>
+                <div class="filter">
+                    <label for="filterResumoMes">Selecionar Mês:</label>
+                    <select id="filterResumoMes" onchange="mostrarResumo()">
+                        <option value="0">Janeiro</option>
+                        <option value="1">Fevereiro</option>
+                        <option value="2">Março</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Maio</option>
+                        <option value="5">Junho</option>
+                        <option value="6">Julho</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Setembro</option>
+                        <option value="9">Outubro</option>
+                        <option value="10">Novembro</option>
+                        <option value="11">Dezembro</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="btn-pdf" onclick="gerarResumoPDF()">Baixar PDF Detalhado do Fechamento</button>
+
+            <table id="resumoTabela">
+                <thead>
+                    <tr>
+                        <th>Nome Completo</th>
+                        <th>Horas Trabalhadas (Total)</th>
+                        <th>Dias Trabalhados</th>
+                        <th>Saldo do Banco de Horas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="editarFuncionario" class="section">
+            <h2>Editar Funcionário</h2>
+            <form id="editarForm">
+                <input type="text" id="editarNomeCompleto" placeholder="Nome Completo" required>
+                <input type="text" id="editarCpf" placeholder="CPF" required readonly>
+                <input type="date" id="editarDataNascimento" placeholder="Data de Nascimento" required>
+                <input type="email" id="editarEmail" placeholder="Email" required>
+                <input type="text" id="editarWhatsapp" placeholder="WhatsApp" required>
+                <input type="date" id="editarDataAdmissao" placeholder="Data de Admissão" required>
+                <input type="number" id="editarSalario" placeholder="Salário" required>
+                <input type="date" id="editarInicioFerias" placeholder="Início das Férias">
+                <input type="date" id="editarFimFerias" placeholder="Fim das Férias">
+                
+                <button type="button" onclick="salvarEdicao()">Salvar</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Biblioteca jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, get, set, remove, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        const firebaseConfig = {
+            const firebaseConfig = {
+            apiKey: "AIzaSyBj0US2rokpxm9KUbEF4cJvCx7XD7uTbek",
+            authDomain: "registroponto-raiz.firebaseapp.com",
+            databaseURL: "https://registroponto-raiz-default-rtdb.firebaseio.com",
+            projectId: "registroponto-raiz",
+            storageBucket: "registroponto-raiz.firebasestorage.app",
+            messagingSenderId: "247520912282",
+            appId: "1:247520912282:web:a2ed65bba10f9910a65023"
+};
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentMonth = new Date().getMonth();
+            document.getElementById('filterMes').value = currentMonth;
+            document.getElementById('filterResumoMes').value = currentMonth;
+            
+            carregarFuncionarios();
+            carregarFiltroFuncionarios();
+            carregarDashboard();
+        });
+
+        function toggleSubmenu(submenuId) {
+            const submenu = document.getElementById(submenuId);
+            submenu.style.display = submenu.style.display === 'none' || submenu.style.display === '' ? 'flex' : 'none';
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+        }
+
+        // --- FUNCÕES DE CADASTRO E FILTROS --- //
+        async function cadastrarFuncionario() {
+            // ... (Manter código original de cadastro) ...
+            const nomeCompleto = document.getElementById('nomeCompletoCadastro').value.trim();
+            const cpf = document.getElementById('cpfCadastro').value.trim();
+            const dataNascimento = document.getElementById('dataNascimentoCadastro').value;
+            const email = document.getElementById('emailCadastro').value.trim();
+            const whatsapp = document.getElementById('whatsappCadastro').value.trim();
+            const dataAdmissao = document.getElementById('dataAdmissaoCadastro').value;
+            const salario = document.getElementById('salarioCadastro').value.trim();
+            const inicioFerias = document.getElementById('inicioFeriasCadastro').value;
+            const fimFerias = document.getElementById('fimFeriasCadastro').value;
+
+            if (!nomeCompleto || !cpf || !dataNascimento || !email || !whatsapp || !dataAdmissao || !salario) {
+                alert('Por favor, preencha todos os campos obrigatórios.');
+                return;
+            }
+
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario, inicioFerias, fimFerias });
+
+            alert('Funcionário cadastrado com sucesso!');
+            document.getElementById('cadastroForm').reset();
+            carregarFuncionarios();
+            carregarFiltroFuncionarios();
+        }
+
+        async function carregarFuncionarios() {
+            const dbRef = ref(db, 'funcionarios');
+            const snapshot = await get(dbRef);
+            const tabelaFuncionarios = document.getElementById('tabelaFuncionarios').getElementsByTagName('tbody')[0];
+            tabelaFuncionarios.innerHTML = ''; 
+            if (snapshot.exists()) {
+                const funcionarios = snapshot.val();
+                Object.keys(funcionarios).forEach(cpf => {
+                    const funcionario = funcionarios[cpf];
+                    const novaLinha = tabelaFuncionarios.insertRow();
+                    novaLinha.insertCell(0).textContent = funcionario.nomeCompleto;
+                    novaLinha.insertCell(1).textContent = funcionario.cpf;
+                    novaLinha.insertCell(2).innerHTML = `<button onclick="verDetalhesFuncionario('${funcionario.cpf}')">Ver Detalhes</button>`;
+                    novaLinha.insertCell(3).innerHTML = `<button onclick="editarFuncionario('${funcionario.cpf}')">Editar</button>`;
+                });
+            }
+        }
+
+        async function carregarFiltroFuncionarios() {
+            const dbRef = ref(db, 'funcionarios');
+            const snapshot = await get(dbRef);
+            const filtroFuncionario = document.getElementById('filterFuncionario');
+            const filtroResumoFuncionario = document.getElementById('filterResumoFuncionario');
+            filtroFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; 
+            filtroResumoFuncionario.innerHTML = '<option value="">Selecione um funcionário</option>'; 
+            if (snapshot.exists()) {
+                const funcionarios = snapshot.val();
+                Object.keys(funcionarios).forEach(cpf => {
+                    const funcionario = funcionarios[cpf];
+                    const optionFuncionario = document.createElement('option');
+                    const optionResumoFuncionario = document.createElement('option');
+                    optionFuncionario.value = funcionario.cpf;
+                    optionFuncionario.textContent = funcionario.nomeCompleto;
+                    optionResumoFuncionario.value = funcionario.cpf;
+                    optionResumoFuncionario.textContent = funcionario.nomeCompleto;
+                    filtroFuncionario.appendChild(optionFuncionario);
+                    filtroResumoFuncionario.appendChild(optionResumoFuncionario);
+                });
+            }
+        }
+
+        async function verDetalhesFuncionario(cpf) {
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            const snapshot = await get(dbRef);
+            const detalhesFuncionario = document.getElementById('detalhesFuncionario');
+            detalhesFuncionario.innerHTML = '';
+            if (snapshot.exists()) {
+                const funcionario = snapshot.val();
+                detalhesFuncionario.innerHTML = `
+                    <h3>Detalhes do Funcionário</h3>
+                    <p><strong>Nome Completo:</strong> ${funcionario.nomeCompleto}</p>
+                    <p><strong>CPF:</strong> ${funcionario.cpf}</p>
+                    <p><strong>Data de Nascimento:</strong> ${funcionario.dataNascimento}</p>
+                    <p><strong>Email:</strong> ${funcionario.email}</p>
+                    <p><strong>WhatsApp:</strong> ${funcionario.whatsapp}</p>
+                    <p><strong>Data de Admissão:</strong> ${funcionario.dataAdmissao}</p>
+                    <p><strong>Salário:</strong> R$ ${funcionario.salario}</p>
+                    <p><strong>Início das Férias:</strong> ${funcionario.inicioFerias || 'N/A'}</p>
+                    <p><strong>Fim das Férias:</strong> ${funcionario.fimFerias || 'N/A'}</p>
+                `;
+            }
+        }
+
+        async function editarFuncionario(cpf) {
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            const snapshot = await get(dbRef);
+            if (snapshot.exists()) {
+                const funcionario = snapshot.val();
+                document.getElementById('editarNomeCompleto').value = funcionario.nomeCompleto;
+                document.getElementById('editarCpf').value = funcionario.cpf;
+                document.getElementById('editarDataNascimento').value = funcionario.dataNascimento;
+                document.getElementById('editarEmail').value = funcionario.email;
+                document.getElementById('editarWhatsapp').value = funcionario.whatsapp;
+                document.getElementById('editarDataAdmissao').value = funcionario.dataAdmissao;
+                document.getElementById('editarSalario').value = funcionario.salario;
+                document.getElementById('editarInicioFerias').value = funcionario.inicioFerias;
+                document.getElementById('editarFimFerias').value = funcionario.fimFerias;
+                showSection('editarFuncionario');
+            }
+        }
+
+        async function salvarEdicao() {
+            // ... (Manter código original de salvar edição) ...
+            const nomeCompleto = document.getElementById('editarNomeCompleto').value.trim();
+            const cpf = document.getElementById('editarCpf').value.trim();
+            const dataNascimento = document.getElementById('editarDataNascimento').value;
+            const email = document.getElementById('editarEmail').value.trim();
+            const whatsapp = document.getElementById('editarWhatsapp').value.trim();
+            const dataAdmissao = document.getElementById('editarDataAdmissao').value;
+            const salario = document.getElementById('editarSalario').value.trim();
+            const inicioFerias = document.getElementById('editarInicioFerias').value;
+            const fimFerias = document.getElementById('editarFimFerias').value;
+
+            if (!nomeCompleto || !cpf || !dataNascimento || !email || !whatsapp || !dataAdmissao || !salario) {
+                alert('Por favor, preencha todos os campos obrigatórios.');
+                return;
+            }
+            const dbRef = ref(db, `funcionarios/${cpf}`);
+            await set(dbRef, { nomeCompleto, cpf, dataNascimento, email, whatsapp, dataAdmissao, salario, inicioFerias, fimFerias });
+            alert('Dados atualizados com sucesso!');
+            showSection('consultarCadastro');
+            carregarFuncionarios();
+        }
+
+        // --- FUNCÕES DE CÁLCULO DE HORAS --- //
+        function extrairHora(dataHora) {
+            if(!dataHora) return '';
+            const partes = dataHora.split(' ');
+            return partes.length > 1 ? partes[1] : '';
+        }
+
+        function calcularHorasTrabalhadas(registro) {
+            const entrada = registro.entrada ? new Date(`1970-01-01T${extrairHora(registro.entrada)}`) : null;
+            const pausa = registro.pausa ? new Date(`1970-01-01T${extrairHora(registro.pausa)}`) : null;
+            const retorno = registro.retorno ? new Date(`1970-01-01T${extrairHora(registro.retorno)}`) : null;
+            const saida = registro.saida ? new Date(`1970-01-01T${extrairHora(registro.saida)}`) : null;
+
+            if (entrada && saida) {
+                let horasTrabalhadas = (saida - entrada) / (1000 * 60 * 60); 
+                if (pausa && retorno) {
+                    horasTrabalhadas -= (retorno - pausa) / (1000 * 60 * 60); 
+                }
+                return horasTrabalhadas.toFixed(2); 
+            }
+            return '';
+        }
+
+        // NOVA FUNÇÃO: Calcula o Saldo Diário do Banco de Horas
+        function calcularSaldoDiario(registro) {
+            const dataRegistro = new Date(`${registro.data}T00:00:00`);
+            
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0); 
+
+            const diaDaSemana = dataRegistro.getDay(); 
+            let jornadaDoDia = 0;
+
+            if (diaDaSemana >= 1 && diaDaSemana <= 5) {
+                jornadaDoDia = 8;
+            } else if (diaDaSemana === 6) {
+                jornadaDoDia = 4;
+            } else if (diaDaSemana === 0) {
+                jornadaDoDia = 0;
+            }
+
+            let horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registro));
+            if (isNaN(horasTrabalhadas)) {
+                horasTrabalhadas = 0;
+            }
+
+            // REGRA CORRIGIDA DE ABONO / FERIADO:
+            // Se o dia foi abonado, ele não cobra meta (jornada = 0) e NÃO gera horas extras positivas 
+            // caso o funcionário tenha registrado ponto por engano ou ajuste. O saldo do dia fica neutro (0.00).
+            if (registro.abonado) {
+                return '0.00';
+            }
+
+            if (dataRegistro > hoje && horasTrabalhadas === 0) {
+                return '0.00';
+            }
+
+            const saldo = horasTrabalhadas - jornadaDoDia;
+            return saldo.toFixed(2);
+        }
+
+
+        // --- FUNCÕES DA TABELA DE RELATÓRIO E EDIÇÃO DIÁRIA --- //
+        async function carregarRegistrosFuncionario() {
+            const cpf = document.getElementById('filterFuncionario').value;
+            if (!cpf) {
+                document.getElementById('registrosTabelaAdmin').innerHTML = '';
+                return;
+            }
+
+            const dbRef = ref(db, `registros/${cpf}`);
+            const snapshot = await get(dbRef);
+
+            const tabela = document.getElementById('registrosTabelaAdmin');
+            tabela.innerHTML = ''; 
+
+            const mesSelecionado = parseInt(document.getElementById('filterMes').value,10);
+            const diasDoMes = obterDiasDoMes(mesSelecionado);
+            const registros = snapshot.exists() ? snapshot.val() : {};
+
+            diasDoMes.forEach(dia => {
+                // Passa a data pra dentro do objeto para o cálculo saber qual dia é
+                const registro = registros[dia] || { entrada: '', pausa: '', retorno: '', saida: '', abonado: false };
+                adicionarRegistroNaTabela(tabela, { data: dia, ...registro, cpf });
+            });
+        }
+
+        function obterDiasDoMes(mes) {
+            const diasDoMes = [];
+            const dataAtual = new Date();
+            const ano = dataAtual.getFullYear();
+            for (let dia = 1; dia <= new Date(ano, mes + 1, 0).getDate(); dia++) {
+                const data = new Date(ano, mes, dia);
+                diasDoMes.push(data.toISOString().split('T')[0]);
+            }
+            return diasDoMes;
+        }
+
+        function adicionarRegistroNaTabela(tabela, registro) {
+            const novaLinha = tabela.insertRow();
+            
+            const horasTrabalhadas = calcularHorasTrabalhadas(registro);
+            const saldo = calcularSaldoDiario(registro);
+
+            let corSaldo = "";
+            if (parseFloat(saldo) > 0) corSaldo = "color: green; font-weight:bold;";
+            else if (parseFloat(saldo) < 0) corSaldo = "color: red; font-weight:bold;";
+
+            novaLinha.innerHTML = `
+                <td>${registro.data.split('-').reverse().join('/')}</td>
+                <td><input type="time" class="editable" value="${extrairHora(registro.entrada)}" data-cpf="${registro.cpf}" data-tipo="entrada" data-data="${registro.data}"></td>
+                <td><input type="time" class="editable" value="${extrairHora(registro.pausa)}" data-cpf="${registro.cpf}" data-tipo="pausa" data-data="${registro.data}"></td>
+                <td><input type="time" class="editable" value="${extrairHora(registro.retorno)}" data-cpf="${registro.cpf}" data-tipo="retorno" data-data="${registro.data}"></td>
+                <td><input type="time" class="editable" value="${extrairHora(registro.saida)}" data-cpf="${registro.cpf}" data-tipo="saida" data-data="${registro.data}"></td>
+                <td>${horasTrabalhadas || '0.00'}</td>
+                <td style="${corSaldo}">${saldo}</td>
+                <td><input type="checkbox" class="editable-abono" data-cpf="${registro.cpf}" data-data="${registro.data}" ${registro.abonado ? 'checked' : ''}></td>
+                <td><button style="padding:5px 10px;" onclick="salvarAlteracao('${registro.data}', '${registro.cpf}')">Salvar</button></td>
+            `;
+        }
+
+        async function salvarAlteracao(data, cpf) {
+            const inputs = document.querySelectorAll(`.editable[data-data='${data}'][data-cpf='${cpf}']`);
+            const checkboxAbono = document.querySelector(`.editable-abono[data-data='${data}'][data-cpf='${cpf}']`);
+
+            const registroAtualizado = {};
+            inputs.forEach(input => {
+                const tipo = input.getAttribute('data-tipo');
+                const valor = input.value;
+                registroAtualizado[tipo] = valor ? `${data} ${valor}` : '';
+            });
+
+            // Salva o status da caixinha de Abono/Feriado no Banco
+            registroAtualizado.abonado = checkboxAbono ? checkboxAbono.checked : false;
+
+            const dbRef = ref(db, `registros/${cpf}/${data}`);
+            await set(dbRef, registroAtualizado);
+
+            alert('Data atualizada com sucesso!');
+            carregarRegistrosFuncionario();
+        }
+
+
+        // --- FUNCÕES DE RESUMO E FECHAMENTO DO MÊS --- //
+        async function mostrarResumo() {
+            const cpf = document.getElementById('filterResumoFuncionario').value;
+            const mesSelecionado = parseInt(document.getElementById('filterResumoMes').value, 10);
+            
+            const tabela = document.getElementById('resumoTabela').getElementsByTagName('tbody')[0];
+            tabela.innerHTML = ''; 
+
+            if (!cpf) return;
+
+            const dbRef = ref(db, `registros/${cpf}`);
+            const snapshot = await get(dbRef);
+
+            if (snapshot.exists()) {
+                const registros = snapshot.val();
+                let totalHorasTrabalhadas = 0;
+                let totalSaldoBanco = 0;
+                let diasTrabalhados = 0;
+
+                // Verifica cada dia registrado no firebase
+                Object.keys(registros).forEach(dia => {
+                    const [anoStr, mesStr, diaDaSemanaStr] = dia.split('-');
+                    
+                    if ((parseInt(mesStr, 10) - 1) === mesSelecionado) {
+                        const registroMontado = { data: dia, ...registros[dia], cpf };
+                        
+                        const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registroMontado));
+                        if (!isNaN(horasTrabalhadas) && horasTrabalhadas > 0) {
+                            totalHorasTrabalhadas += horasTrabalhadas;
+                            diasTrabalhados += 1;
+                        }
+
+                        // Soma o saldo do dia (+ extra ou - dívida) no banco total
+                        const saldoDiario = parseFloat(calcularSaldoDiario(registroMontado));
+                        totalSaldoBanco += saldoDiario;
+                    }
+                });
+
+                // Lógica Extra: Dias vazios do mês também precisam ser checados para ver se há falta injustificada
+                const diasDoMes = obterDiasDoMes(mesSelecionado);
+                diasDoMes.forEach(dia => {
+                    if (!registros[dia]) {
+                        // Se não tem registro, cria um objeto vazio para a função calcular se gera dívida
+                        const registroVazio = { data: dia, entrada: '', saida: '', abonado: false, cpf };
+                        const saldoFalta = parseFloat(calcularSaldoDiario(registroVazio));
+                        if (saldoFalta < 0) {
+                            totalSaldoBanco += saldoFalta;
+                        }
+                    }
+                });
+
+
+                const funcionarioSnapshot = await get(ref(db, `funcionarios/${cpf}`));
+                const funcionario = funcionarioSnapshot.val();
+
+                const novaLinha = tabela.insertRow();
+                
+                let classeSaldo = "normal";
+                if(totalSaldoBanco > 0) classeSaldo = "valor-positivo";
+                else if(totalSaldoBanco < 0) classeSaldo = "valor-negativo";
+
+                novaLinha.innerHTML = `
+                    <td>${funcionario.nomeCompleto}</td>
+                    <td>${totalHorasTrabalhadas.toFixed(2)}</td>
+                    <td>${diasTrabalhados}</td>
+                    <td class="${classeSaldo}">${totalSaldoBanco.toFixed(2)}h</td>
+                `;
+            }
+        }
+
+        async function gerarResumoPDF() {
+            const cpf = document.getElementById('filterResumoFuncionario').value;
+            const selectMes = document.getElementById('filterResumoMes');
+            const mesSelecionado = parseInt(selectMes.value, 10);
+            const nomeMes = selectMes.options[selectMes.selectedIndex].text;
+
+            if (!cpf) {
+                alert("Por favor, selecione um funcionário primeiro.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const dbRef = ref(db, `registros/${cpf}`);
+            const snapshot = await get(dbRef);
+            
+            const funcionarioSnapshot = await get(ref(db, `funcionarios/${cpf}`));
+            const funcionario = funcionarioSnapshot.val();
+
+            let totalHorasTrabalhadas = 0;
+            let totalSaldoBanco = 0;
+            let diasTrabalhados = 0;
+            let movimentacoesBanco = []; 
+
+            const diasDoMes = obterDiasDoMes(mesSelecionado);
+            const registros = snapshot.exists() ? snapshot.val() : {};
+
+            diasDoMes.forEach(dia => {
+                const [anoStr, mesStr, diaStr] = dia.split('-');
+                const registroData = registros[dia] || { data: dia, entrada: '', saida: '', abonado: false, cpf };
+                
+                // Formata o objeto correto
+                const registroCompleto = { data: dia, ...registroData, cpf };
+                
+                // Calcula Trabalhadas
+                const horasTrabalhadas = parseFloat(calcularHorasTrabalhadas(registroCompleto));
+                if (!isNaN(horasTrabalhadas) && horasTrabalhadas > 0) {
+                    totalHorasTrabalhadas += horasTrabalhadas;
+                    diasTrabalhados += 1;
+                }
+
+                // Calcula Saldo
+                const saldoDiario = parseFloat(calcularSaldoDiario(registroCompleto));
+                totalSaldoBanco += saldoDiario;
+
+                // Registra detalhe se houve variação (Extra, Falta, ou Falta justificada)
+                if (saldoDiario !== 0) {
+                    movimentacoesBanco.push({
+                        dataFormatada: `${diaStr}/${mesStr}/${anoStr}`,
+                        saldo: saldoDiario,
+                        motivo: saldoDiario < 0 ? "Horas Devidas" : "Horas Extras"
+                    });
+                } else if (registroCompleto.abonado) {
+                     movimentacoesBanco.push({
+                        dataFormatada: `${diaStr}/${mesStr}/${anoStr}`,
+                        saldo: 0,
+                        motivo: "Feriado/Abonado (Isento)"
+                    });
+                }
+            });
+
+
+            // --- Estruturação Visual do PDF ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text(`Fechamento de Ponto - ${nomeMes}`, 20, 20);
+            
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            let y = 35;
+            
+            doc.text(`Nome: ${funcionario.nomeCompleto}`, 20, y); y += 10;
+            doc.text(`Total Trabalhado: ${totalHorasTrabalhadas.toFixed(2)} horas`, 20, y); y += 10;
+            doc.text(`Dias Comparecidos: ${diasTrabalhados}`, 20, y); y += 10;
+            
+            doc.setFont("helvetica", "bold");
+            const textoBanco = totalSaldoBanco >= 0 ? `+ ${totalSaldoBanco.toFixed(2)} horas` : `${totalSaldoBanco.toFixed(2)} horas`;
+            doc.text(`SALDO BANCO DE HORAS: ${textoBanco}`, 20, y); y += 20;
+
+            // --- Bloco de Detalhamento Diário ---
+            if (movimentacoesBanco.length > 0) {
+                doc.setFont("helvetica", "bold");
+                doc.text("Detalhamento de Movimentação do Banco de Horas:", 20, y);
+                doc.setFont("helvetica", "normal");
+                y += 10;
+                doc.line(20, y-5, 190, y-5);
+
+                movimentacoesBanco.forEach(item => {
+                    let sinal = item.saldo > 0 ? "+" : "";
+                    if (item.saldo === 0) sinal = ""; // Para os abonados
+                    
+                    doc.text(`• ${item.dataFormatada} => ${sinal}${item.saldo.toFixed(2)}h (${item.motivo})`, 20, y);
+                    y += 10;
+                    
+                    if (y > 270) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                });
+            } else {
+                doc.text("Nenhuma hora extra ou falta registrada no mês.", 20, y);
+            }
+
+            doc.save(`Fechamento_Ponto_${funcionario.nomeCompleto.replace(/\s+/g, '_')}_${nomeMes}.pdf`);
+        }
+
+        // --- DASHBOARD E OUTROS ---
+        function carregarDashboard() {
+            const dbRef = ref(db, 'funcionarios');
+            onValue(dbRef, (snapshot) => {
+                const tabela = document.getElementById('dashboardTabela').getElementsByTagName('tbody')[0];
+                tabela.innerHTML = ''; 
+                if (snapshot.exists()) {
+                    const funcionarios = snapshot.val();
+                    Object.keys(funcionarios).forEach(async cpf => {
+                        const funcionario = funcionarios[cpf];
+                        const status = await calcularStatus(cpf, funcionario);
+                        const novaLinha = tabela.insertRow();
+                        novaLinha.insertCell(0).textContent = funcionario.nomeCompleto;
+                        novaLinha.insertCell(1).textContent = status;
+                    });
+                }
+            });
+        }
+
+        async function calcularStatus(cpf, funcionario) {
+            const hoje = new Date();
+            const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
+            const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
+            if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) return 'Férias';
+            const dbRef = ref(db, `registros/${cpf}/${hoje.toISOString().split('T')[0]}`);
+            const snapshot = await get(dbRef);
+            if (snapshot.exists()) {
+                const registros = snapshot.val();
+                if (registros.saida) return 'Fim de Expediente';
+                else if (registros.retorno) return 'Trabalhando (Turno 2)';
+                else if (registros.pausa) return 'Intervalo';
+                else if (registros.entrada) return 'Trabalhando (Turno 1)';
+            }
+            return 'Não Registrado';
+        }
+
+        async function limparDados() {
+            if (confirm('Atenção: Tem certeza de que deseja apagar TODOS os registros de ponto e funcionários do sistema? Essa ação não pode ser desfeita.')) {
+                const dbRefFuncionarios = ref(db, 'funcionarios');
+                const dbRefRegistros = ref(db, 'registros');
+                await remove(dbRefFuncionarios);
+                await remove(dbRefRegistros);
+                alert('Todos os dados foram limpos.');
+                carregarFuncionarios();
+                carregarFiltroFuncionarios();
+                document.getElementById('registrosTabelaAdmin').innerHTML = '';
+            }
+        }
+
+        window.toggleSubmenu = toggleSubmenu;
+        window.showSection = showSection;
+        window.cadastrarFuncionario = cadastrarFuncionario;
+        window.carregarFuncionarios = carregarFuncionarios;
+        window.carregarFiltroFuncionarios = carregarFiltroFuncionarios;
+        window.verDetalhesFuncionario = verDetalhesFuncionario;
+        window.carregarRegistrosFuncionario = carregarRegistrosFuncionario;
+        window.salvarAlteracao = salvarAlteracao;
+        window.limparDados = limparDados;
+        window.mostrarResumo = mostrarResumo;
+        window.carregarDashboard = carregarDashboard;
+        window.editarFuncionario = editarFuncionario;
+        window.salvarEdicao = salvarEdicao;
+        window.gerarResumoPDF = gerarResumoPDF; 
+    </script>
+</body>
+</html>
