@@ -1,1 +1,471 @@
-teste
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Ponto Eletrônico</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 85%;
+            max-width: 450px;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 25px;
+            color: #222;
+        }
+        h2 {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 15px;
+        }
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .button {
+            width: 100%;
+            height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 1;
+            transition: opacity 0.3s;
+            box-sizing: border-box;
+        }
+        .entrada { background-color: #4CAF50; }
+        .pausa { background-color: #FFC107; }
+        .retorno { background-color: #FF9800; }
+        .saida { background-color: #F44336; }
+        .button img {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 10px;
+        }
+        .disabled {
+            opacity: 0.5;
+            pointer-events: none; 
+            filter: grayscale(100%);
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input, button {
+            padding: 12px;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 10px;
+            box-sizing: border-box;
+            border-radius: 6px;
+        }
+        input {
+            border: 1px solid #ccc;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #nomeFuncionario {
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-align: center;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #333;
+        }
+        .registro-dia {
+            margin-top: 20px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .registro-dia th, .registro-dia td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .registro-dia th {
+            background-color: #f2f2f2;
+        }
+        .pdf-button {
+            display: none;
+            margin-top: 20px;
+            background-color: #333;
+            color: white;
+            padding: 12px;
+            text-align: center;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .ferias-mensagem {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #FF5722;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sistema de Ponto Eletrônico</h1>
+        <form id="acessoForm">
+            <h2>Acesso ao Registro</h2>
+            <input type="text" id="cpfAcesso" placeholder="Digite o CPF" maxlength="14" inputmode="numeric" pattern="[0-9]*" required oninput="aplicarMascaraCPF(this)">
+            <button type="button" onclick="acessarRegistro()">Acessar</button>
+        </form>
+        <div id="registroPonto" style="display: none;">
+            <div id="nomeFuncionario"></div>
+            
+            <div class="buttons">
+                <div class="button entrada" id="entrada" onclick="registrarPonto('entrada')">
+                    <img src="https://img.icons8.com/material-outlined/50/000000/enter-2.png" alt="Entrada">
+                    Entrada
+                </div>
+                <div class="button pausa" id="pausa" onclick="registrarPonto('pausa')">
+                    <img src="https://img.icons8.com/ios-filled/50/000000/cafe.png" alt="Pausa">
+                    Pausa
+                </div>
+                <div class="button retorno" id="retorno" onclick="registrarPonto('retorno')">
+                    <img src="https://img.icons8.com/ios-filled/50/000000/cafe.png" alt="Retorno">
+                    Retorno
+                </div>
+                <div class="button saida" id="saida" onclick="registrarPonto('saida')">
+                    <img src="https://img.icons8.com/material-outlined/50/000000/exit.png" alt="Saída">
+                    Saída
+                </div>
+            </div>
+            
+            <div id="feriasMensagem" class="ferias-mensagem" style="display: none;"></div>
+            <table id="tabelaRegistros" class="registro-dia" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Horário</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+            <div id="gerarPDF" class="pdf-button" onclick="gerarPDF()">Gerar Comprovante em PDF</div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY_DO_NOVO_FIREBASE",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            projectId: "SEU_PROJETO",
+            storageBucket: "SEU_PROJETO.appspot.com",
+            messagingSenderId: "SEU_MESSAGING_ID",
+            appId: "SEU_APP_ID",
+            databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function aplicarMascaraCPF(input) {
+            let valor = input.value.replace(/\D/g, ""); 
+            if (valor.length > 11) valor = valor.slice(0, 11); 
+
+            if (valor.length > 9) {
+                valor = valor.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
+            } else if (valor.length > 6) {
+                valor = valor.replace(/^(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
+            } else if (valor.length > 3) {
+                valor = valor.replace(/^(\d{3})(\d{1,3})/, "$1.$2");
+            }
+            input.value = valor;
+        }
+
+        function acessarRegistro() {
+            let cpfDigitado = document.getElementById('cpfAcesso').value.trim();
+            const cpf = cpfDigitado.replace(/\D/g, ""); 
+
+            if (cpf === '') {
+                alert('Por favor, insira o CPF.');
+                return;
+            }
+
+            const dbRef = db.ref(`funcionarios/${cpf}`);
+            dbRef.get().then(snapshot => {
+                if (!snapshot.exists()) {
+                    alert('Funcionário não encontrado.');
+                    return;
+                }
+
+                const funcionario = snapshot.val();
+                localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
+                document.getElementById('acessoForm').style.display = 'none';
+                document.getElementById('registroPonto').style.display = 'block';
+                document.getElementById('nomeFuncionario').innerText = `Bem-vindo(a), ${funcionario.nomeCompleto}`;
+                carregarRegistrosDoDia();
+                desativarBotoes();
+
+                const hoje = new Date();
+                const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
+                const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
+
+                if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
+                    document.querySelectorAll('.button').forEach(button => button.classList.add('disabled'));
+                    document.getElementById('feriasMensagem').innerText = `Boas Férias! \nPeríodo: ${inicioFerias.toLocaleDateString()} a ${fimFerias.toLocaleDateString()}`;
+                    document.getElementById('feriasMensagem').style.display = 'block';
+                }
+            });
+        }
+
+        function registrarPonto(tipo) {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const hoje = new Date();
+            const inicioFerias = funcionario.inicioFerias ? new Date(funcionario.inicioFerias) : null;
+            const fimFerias = funcionario.fimFerias ? new Date(funcionario.fimFerias) : null;
+
+            if (inicioFerias && fimFerias && hoje >= inicioFerias && hoje <= fimFerias) {
+                alert('Você está de férias. Não é possível registrar o ponto.');
+                return;
+            }
+
+            const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
+            botoes.forEach(botao => document.getElementById(botao).classList.add('disabled'));
+
+            const dataHora = new Date().toLocaleString();
+            const data = new Date().toISOString().split('T')[0];
+            const registro = { nome: funcionario.nomeCompleto, cpf: funcionario.cpf, tipo, dataHora, data };
+
+            salvarRegistroLocalmente(registro);
+            adicionarRegistroNaTabela(registro);
+
+            if (tipo === 'saida') {
+                document.getElementById('gerarPDF').style.display = 'block';
+            }
+        }
+
+        function salvarRegistroLocalmente(registro) {
+            const cpfLimpo = registro.cpf.replace(/\D/g, ""); 
+            const dbRef = db.ref(`registros/${cpfLimpo}/${registro.data}`);
+            dbRef.get().then(snapshot => {
+                const registros = snapshot.exists() ? snapshot.val() : {};
+                registros[registro.tipo] = registro.dataHora;
+                
+                dbRef.set(registros).then(() => {
+                    desativarBotoes();
+                });
+            });
+        }
+
+        function desativarBotoes() {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const cpfLimpo = funcionario.cpf.replace(/\D/g, ""); 
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const dbRef = db.ref(`registros/${cpfLimpo}/${dataAtual}`);
+            
+            dbRef.get().then(snapshot => {
+                const registros = snapshot.exists() ? snapshot.val() : {};
+                
+                const botoes = ['entrada', 'pausa', 'retorno', 'saida'];
+                botoes.forEach(botao => {
+                    document.getElementById(botao).classList.add('disabled');
+                });
+
+                const dataHoje = new Date();
+                const diaDaSemana = dataHoje.getDay(); 
+
+                if (!registros.entrada) {
+                    document.getElementById('entrada').classList.remove('disabled');
+                } else if (registros.entrada && !registros.pausa && !registros.saida) {
+                    if (diaDaSemana === 6) { 
+                        document.getElementById('pausa').classList.remove('disabled');
+                        document.getElementById('saida').classList.remove('disabled');
+                    } else {
+                        document.getElementById('pausa').classList.remove('disabled');
+                    }
+                } else if (registros.pausa && !registros.retorno) {
+                    document.getElementById('retorno').classList.remove('disabled');
+                } else if (registros.retorno && !registros.saida) {
+                    document.getElementById('saida').classList.remove('disabled');
+                }
+            });
+        }
+
+        function carregarRegistrosDoDia() {
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const cpfLimpo = funcionario.cpf.replace(/\D/g, ""); 
+            const dataAtual = new Date().toISOString().split('T')[0];
+            const dbRef = db.ref(`registros/${cpfLimpo}/${dataAtual}`);
+            dbRef.get().then(snapshot => {
+                if (snapshot.exists()) {
+                    const registros = snapshot.val();
+                    const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
+                    tabela.innerHTML = ''; 
+                    Object.keys(registros).forEach(tipo => {
+                        const novaLinha = tabela.insertRow();
+                        const celulaTipo = novaLinha.insertCell(0);
+                        const celulaHorario = novaLinha.insertCell(1);
+                        celulaTipo.textContent = tipo.charAt(0).toUpperCase() + tipo.slice(1);
+                        celulaHorario.textContent = registros[tipo].split(' ')[1];
+                    });
+                    document.getElementById('tabelaRegistros').style.display = 'table';
+                }
+            });
+        }
+
+        function adicionarRegistroNaTabela(registro) {
+            const tabela = document.getElementById('tabelaRegistros').getElementsByTagName('tbody')[0];
+            const novaLinha = tabela.insertRow();
+            const celulaTipo = novaLinha.insertCell(0);
+            const celulaHorario = novaLinha.insertCell(1);
+            celulaTipo.textContent = registro.tipo.charAt(0).toUpperCase() + registro.tipo.slice(1);
+            celulaHorario.textContent = registro.dataHora.split(' ')[1];
+            document.getElementById('tabelaRegistros').style.display = 'table';
+        }
+
+        async function gerarPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            const funcionario = JSON.parse(localStorage.getItem('funcionarioLogado'));
+            const cpfLimpo = funcionario.cpf.replace(/\D/g, "");
+            const dataAtualStr = new Date().toISOString().split('T')[0];
+            const dataExibicao = new Date().toLocaleDateString();
+
+            const snapshot = await db.ref(`registros/${cpfLimpo}/${dataAtualStr}`).get();
+            const registros = snapshot.exists() ? snapshot.val() : {};
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text(`Comprovante de Registro de Ponto`, 20, 20);
+            
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Funcionário: ${funcionario.nomeCompleto}`, 20, 30);
+            doc.text(`CPF: ${funcionario.cpf}`, 20, 38);
+            doc.text(`Data de Emissão: ${dataExibicao}`, 20, 46);
+
+            doc.setLineWidth(0.5);
+            doc.line(20, 52, 190, 52);
+
+            doc.setFont("helvetica", "bold");
+            doc.text(`Marcações do Dia:`, 20, 62);
+            
+            doc.setFont("helvetica", "normal");
+            let y = 72;
+            
+            const tiposPermitidos = [
+                { chave: 'entrada', label: 'Entrada' },
+                { chave: 'pausa', label: 'Pausa (Almoço)' },
+                { chave: 'retorno', label: 'Retorno (Almoço)' },
+                { chave: 'saida', label: 'Saída' }
+            ];
+
+            tiposPermitidos.forEach(item => {
+                if (registros[item.chave]) {
+                    const horarioCompleto = registros[item.chave];
+                    const horaFormatada = horarioCompleto.includes(' ') ? horarioCompleto.split(' ')[1] : horarioCompleto;
+                    doc.text(`- ${item.label}: ${horaFormatada}`, 25, y);
+                    y += 10;
+                } else {
+                    doc.text(`- ${item.label}: Não registrado`, 25, y);
+                    y += 10;
+                }
+            });
+
+            function extrairHora(dataHora) {
+                if(!dataHora) return '';
+                const partes = dataHora.split(' ');
+                return partes.length > 1 ? partes[1] : '';
+            }
+
+            let totalHoras = 0;
+            const entrada = registros.entrada ? new Date(`1970-01-01T${extrairHora(registros.entrada)}`) : null;
+            const pausa = registros.pausa ? new Date(`1970-01-01T${extrairHora(registros.pausa)}`) : null;
+            const retorno = registros.retorno ? new Date(`1970-01-01T${extrairHora(registros.retorno)}`) : null;
+            const saida = registros.saida ? new Date(`1970-01-01T${extrairHora(registros.saida)}`) : null;
+
+            if (entrada && saida) {
+                let horasTrab = (saida - entrada) / (1000 * 60 * 60);
+                if (pausa && retorno) {
+                    horasTrab -= (retorno - pausa) / (1000 * 60 * 60);
+                }
+                totalHoras = horasTrab;
+            }
+
+            const dataObj = new Date(`${dataAtualStr}T00:00:00`);
+            const diaSemana = dataObj.getDay();
+            let jornadaDia = 0;
+            if (diaSemana >= 1 && diaSemana <= 5) jornadaDia = 8;
+            else if (diaSemana === 6) jornadaDia = 4;
+
+            let saldoDia = totalHoras - jornadaDia;
+            if (registros.abonado) saldoDia = 0;
+
+            y += 5;
+            doc.setLineWidth(0.2);
+            doc.line(20, y, 190, y);
+            y += 10;
+
+            doc.setFont("helvetica", "bold");
+            doc.text(`Resumo do Expediente:`, 20, y);
+            y += 8;
+
+            doc.setFont("helvetica", "normal");
+            doc.text(`• Total Trabalhado: ${totalHoras.toFixed(2)} horas`, 25, y);
+            y += 8;
+
+            let textoSaldo = "";
+            if (registros.abonado) {
+                textoSaldo = "Dia Abonado / Feriado (Sem saldo de horas debitado)";
+            } else if (saldoDia > 0) {
+                textoSaldo = `+ ${saldoDia.toFixed(2)} horas (Hora Extra)`;
+            } else if (saldoDia < 0) {
+                textoSaldo = `${saldoDia.toFixed(2)} horas (Horas Devidas)`;
+            } else {
+                textoSaldo = `0.00 horas (Jornada cumprida exata)`;
+            }
+
+            doc.text(`• Saldo do Dia: ${textoSaldo}`, 25, y);
+            doc.save(`Comprovante_Ponto_${funcionario.nomeCompleto}_${dataAtualStr}.pdf`);
+        }
+
+        window.acessarRegistro = acessarRegistro;
+        window.registrarPonto = registrarPonto;
+        window.gerarPDF = gerarPDF;
+    </script>
+</body>
+</html>
